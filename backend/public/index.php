@@ -7,6 +7,9 @@ use Slim\Factory\AppFactory;
 
 require __DIR__ . '/../vendor/autoload.php';
 
+// Do not start the application on PHP releases affected by CVE-2026-109618.
+App\RuntimeGuard::assertSupported();
+
 // Build DI container
 $containerBuilder = new ContainerBuilder();
 $containerBuilder->addDefinitions([

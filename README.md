@@ -22,7 +22,7 @@
 
 ### 环境要求
 
-- PHP >= 8.1（需要 pdo_sqlite 扩展）
+- PHP 8.2.35+、8.3.36+、8.4.27+ 或 8.5.12+（需要 pdo_sqlite 扩展）
 - Node.js >= 18
 - Composer
 
@@ -39,6 +39,8 @@ npm install
 ```
 
 首次启动时，后端会自动初始化 SQLite 数据库并创建默认管理员账号。
+
+> **运行时安全要求：** 本项目的 `backend/public/index.php` 是实际运行的 PHP 后端入口，PHP 不是只用于生成渗透载荷。请确认提供 Web 服务的 PHP-FPM/Apache 使用的是上面列出的修复版本。项目会在 Composer 安装和应用启动时拒绝已知受影响的 PHP 版本；`backend/public/.user.ini` 中的请求限制只能降低资源消耗，不能替代 PHP 升级。
 
 ### 开发环境
 
@@ -72,6 +74,9 @@ server {
     listen 80;
     server_name xss.example.com;
 
+    # Reject oversized bodies before PHP parses them.
+    client_max_body_size 8m;
+
     # 前端静态文件
     location / {
         root /path/to/frontend/dist;
@@ -86,6 +91,18 @@ server {
     }
 }
 ```
+
+部署后请在服务器上分别检查 CLI 和 FPM 使用的版本，并重启 PHP-FPM/Apache：
+
+```bash
+php -v
+php-fpm -v
+sudo systemctl restart php-fpm   # 按发行版实际服务名调整
+```
+
+### CVE-2026-109618
+
+该问题是 PHP 运行时的内存安全漏洞，不要求应用调用 `shell_exec` 等命令执行函数。官方公告确认 Apache `mod_php` 的自动请求解析路径存在远程代码执行风险；PHP-FPM 的完整利用链尚未被官方证实，但仍应按受影响版本处理。升级 PHP 是完整修复，限制请求大小和过滤 multipart 只能作为额外防护。应用启动检查无法替代升级，因为自动请求解析可能发生在 PHP 脚本执行之前。
 
 ---
 
